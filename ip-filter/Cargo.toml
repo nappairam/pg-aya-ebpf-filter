@@ -1,12 +1,12 @@
 [package]
-name = "udp-monitor"
+name = "ip-filter"
 version = "0.1.0"
 edition = "2021"
 
 license.workspace = true
 
 [dependencies]
-udp-monitor-common = { path = "../udp-monitor-common", features = ["user"] }
+ip-filter-common = { path = "../ip-filter-common", features = ["user"] }
 
 anyhow = { workspace = true, default-features = true }
 aya = { workspace = true }
@@ -37,8 +37,8 @@ aya-build = { workspace = true }
 # Finally note that *any* usage of `artifact = ...` in *any* Cargo.toml in the workspace breaks
 # workflows with stable cargo; stable cargo outright refuses to load manifests that use unstable
 # features.
-udp-monitor-ebpf = { path = "../udp-monitor-ebpf" }
+ip-filter-ebpf = { path = "../ip-filter-ebpf" }
 
 [[bin]]
-name = "udp-monitor"
+name = "ip-filter"
 path = "src/main.rs"

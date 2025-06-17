@@ -21,8 +21,8 @@ use network_types::{
 static BLOCKLIST: HashMap<u32, u32> = HashMap::<u32, u32>::with_max_entries(1024, 0);
 
 #[xdp]
-pub fn udp_monitor(ctx: XdpContext) -> u32 {
-    match try_udp_monitor(ctx) {
+pub fn ip_filter(ctx: XdpContext) -> u32 {
+    match try_ip_filter(ctx) {
         Ok(ret) => ret,
         Err(_) => xdp_action::XDP_ABORTED,
     }
@@ -45,7 +45,7 @@ fn block_ip(address: u32) -> bool {
     unsafe { BLOCKLIST.get(&address).is_some() }
 }
 
-fn try_udp_monitor(ctx: XdpContext) -> Result<u32, ()> {
+fn try_ip_filter(ctx: XdpContext) -> Result<u32, ()> {
     let ethhdr: *const EthHdr = ptr_at(&ctx, 0)?; //
     match unsafe { (*ethhdr).ether_type } {
         EtherType::Ipv4 => {}
@@ -59,7 +59,7 @@ fn try_udp_monitor(ctx: XdpContext) -> Result<u32, ()> {
 
     let source_ip = u32::from_be_bytes(unsafe { (*ipv4hdr).src_addr });
 
-    let (source_port, dest_port) = match proto {
+    let (source_port, _dest_port) = match proto {
         IpProto::Tcp => {
             let tcphdr: *const TcpHdr = ptr_at(&ctx, EthHdr::LEN + Ipv4Hdr::LEN)?;
             (

@@ -1,11 +1,11 @@
 [workspace]
 resolver = "2"
 members = [
-    "udp-monitor",
-    "udp-monitor-common",
-    "udp-monitor-ebpf",
+    "ip-filter",
+    "ip-filter-common",
+    "ip-filter-ebpf",
 ]
-default-members = ["udp-monitor", "udp-monitor-common"]
+default-members = ["ip-filter", "ip-filter-common"]
 
 [workspace.package]
 license = "MIT OR Apache-2.0"
@@ -28,6 +28,6 @@ log = { version = "0.4.22", default-features = false }
 tokio = { version = "1.40.0", default-features = false }
 which = { version = "6.0.0", default-features = false }
 
-[profile.release.package.udp-monitor-ebpf]
+[profile.release.package.ip-filter-ebpf]
 debug = 2
 codegen-units = 1

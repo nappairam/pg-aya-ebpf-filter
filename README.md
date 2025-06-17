@@ -1,9 +1,9 @@
-# udp-monitor
+# ip-filter
 
 ## Observe this output
 
 ```bash
-❯ llvm-readelf --sections target/debug/build/udp-monitor-0cfcb0e2f15b2963/out/udp-monitor
+❯ llvm-readelf --sections target/debug/build/ip-filter-0cfcb0e2f15b2963/out/ip-filter
 There are 23 section headers, starting at offset 0x1a358:
 
 Section Headers:
@@ -37,7 +37,7 @@ Key to Flags:
   C (compressed), x (unknown), o (OS specific), E (exclude),
   R (retain), p (processor specific)
 
-❯ llvm-objdump --no-show-raw-insn --section=xdp -S target/debug/build/udp-monitor-0cfcb0e2f15b2963/out/udp-monitor
+❯ llvm-objdump --no-show-raw-insn --section=xdp -S target/debug/build/ip-filter-0cfcb0e2f15b2963/out/ip-filter
 
 ```
 
@@ -66,16 +66,16 @@ program.
 Cross compilation should work on both Intel and Apple Silicon Macs.
 
 ```shell
-CC=${ARCH}-linux-musl-gcc cargo build --package udp-monitor --release \
+CC=${ARCH}-linux-musl-gcc cargo build --package ip-filter --release \
   --target=${ARCH}-unknown-linux-musl \
   --config=target.${ARCH}-unknown-linux-musl.linker=\"${ARCH}-linux-musl-gcc\"
 ```
-The cross-compiled program `target/${ARCH}-unknown-linux-musl/release/udp-monitor` can be
+The cross-compiled program `target/${ARCH}-unknown-linux-musl/release/ip-filter` can be
 copied to a Linux server or VM and run there.
 
 ## License
 
-With the exception of eBPF code, udp-monitor is distributed under the terms
+With the exception of eBPF code, ip-filter is distributed under the terms
 of either the [MIT license] or the [Apache License] (version 2.0), at your
 option.
 
