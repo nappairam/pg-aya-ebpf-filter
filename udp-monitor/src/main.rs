@@ -1,9 +1,14 @@
+use std::net::Ipv4Addr;
+
 use anyhow::Context as _;
-use aya::programs::{Xdp, XdpFlags};
+use aya::{
+    maps::HashMap,
+    programs::{Xdp, XdpFlags},
+};
 use clap::Parser;
 #[rustfmt::skip]
 use log::{debug, warn};
-use tokio::signal;
+use std::io::{self, Write};
 
 #[derive(Debug, Parser)]
 struct Opt {
@@ -46,10 +51,29 @@ async fn main() -> anyhow::Result<()> {
     program.attach(&iface, XdpFlags::default())
         .context("failed to attach the XDP program with default flags - try changing XdpFlags::default() to XdpFlags::SKB_MODE")?;
 
-    let ctrl_c = signal::ctrl_c();
-    println!("Waiting for Ctrl-C...");
-    ctrl_c.await?;
-    println!("Exiting...");
+    let mut blocklist: HashMap<_, u32, u32> =
+        HashMap::try_from(ebpf.map_mut("BLOCKLIST").unwrap())?;
 
-    Ok(())
+    loop {
+        print!("Enter an IP address: ");
+        io::stdout().flush().unwrap();
+
+        let mut input = String::new();
+        io::stdin()
+            .read_line(&mut input)
+            .expect("Failed to read input");
+
+        let input = input.trim();
+        let Ok(ip_address) = input.parse::<Ipv4Addr>() else {
+            continue;
+        };
+        let block_addr: u32 = ip_address.into();
+        if blocklist.get(&block_addr, 0).is_ok() {
+            println!("Removing IP address: {ip_address}");
+            blocklist.remove(&block_addr)?;
+        } else {
+            println!("Adding IP address: {ip_address}");
+            blocklist.insert(block_addr, 0, 0)?;
+        }
+    }
 }

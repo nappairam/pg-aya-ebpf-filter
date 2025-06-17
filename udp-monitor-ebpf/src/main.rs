@@ -6,10 +6,10 @@ use core::mem;
 use aya_ebpf::{
     bindings::xdp_action,
     macros::{map, xdp},
-    maps::PerfEventArray,
+    maps::HashMap,
     programs::XdpContext,
 };
-use aya_log_ebpf::info;
+use aya_log_ebpf as log;
 use network_types::{
     eth::{EthHdr, EtherType},
     ip::{IpProto, Ipv4Hdr},
@@ -18,7 +18,7 @@ use network_types::{
 };
 
 #[map]
-static EVENTS: PerfEventArray<u32> = PerfEventArray::new(0);
+static BLOCKLIST: HashMap<u32, u32> = HashMap::<u32, u32>::with_max_entries(1024, 0);
 
 #[xdp]
 pub fn udp_monitor(ctx: XdpContext) -> u32 {
@@ -41,6 +41,10 @@ fn ptr_at<T>(ctx: &XdpContext, offset: usize) -> Result<*const T, ()> {
     Ok((start + offset) as *const T)
 }
 
+fn block_ip(address: u32) -> bool {
+    unsafe { BLOCKLIST.get(&address).is_some() }
+}
+
 fn try_udp_monitor(ctx: XdpContext) -> Result<u32, ()> {
     let ethhdr: *const EthHdr = ptr_at(&ctx, 0)?; //
     match unsafe { (*ethhdr).ether_type } {
@@ -53,24 +57,38 @@ fn try_udp_monitor(ctx: XdpContext) -> Result<u32, ()> {
 
     let proto = unsafe { (*ipv4hdr).proto };
 
+    let source_ip = u32::from_be_bytes(unsafe { (*ipv4hdr).src_addr });
+
     let (source_port, dest_port) = match proto {
         IpProto::Tcp => {
             let tcphdr: *const TcpHdr = ptr_at(&ctx, EthHdr::LEN + Ipv4Hdr::LEN)?;
-            (u16::from_be(unsafe { (*tcphdr).source }), u16::from_be(unsafe { (*tcphdr).dest }))
+            (
+                u16::from_be(unsafe { (*tcphdr).source }),
+                u16::from_be(unsafe { (*tcphdr).dest }),
+            )
         }
         IpProto::Udp => {
             let udphdr: *const UdpHdr = ptr_at(&ctx, EthHdr::LEN + Ipv4Hdr::LEN)?;
-            (u16::from_be_bytes(unsafe { (*udphdr).source }), u16::from_be_bytes(unsafe { (*udphdr).dest }))
+            (
+                u16::from_be_bytes(unsafe { (*udphdr).source }),
+                u16::from_be_bytes(unsafe { (*udphdr).dest }),
+            )
         }
         _ => return Err(()),
     };
 
-    info!(&ctx, "PROT: {} SRC IP: {:i}, SRC PORT: {}", proto as u8, source_addr, source_port);
-    if dest_port == 40890 {
-        info!(&ctx, "Packet to port 40890 received");
-    }
+    log::debug!(
+        &ctx,
+        "PROT: {} SRC IP: {:i}, SRC PORT: {}", proto as u8, source_addr, source_port
+    );
+    let action = if block_ip(source_ip) {
+        xdp_action::XDP_DROP
+    } else {
+        xdp_action::XDP_PASS
+    };
+    log::debug!(&ctx, "SRC: {:i}, ACTION: {}", source_ip, action);
 
-    Ok(xdp_action::XDP_PASS)
+    Ok(action)
 }
 
 #[cfg(not(test))]
